@@ -12,7 +12,7 @@ namespace ToxiqChatTester
         private HubConnection _notificationHubConnection;
         private Guid _currentConversationId;
         private HttpClient _httpClient;
-        private string _baseUrl = "http://10.0.10.3:9745"; // Change this to your server URL
+        private string _baseUrl = "https://api.toxiq.xyz"; // Change this to your server URL
         private ChatHubClient _chatHubClient;
         private HubConnection _notificationConnection;
         private AuthenticationHelper _authHelper;
@@ -152,7 +152,6 @@ namespace ToxiqChatTester
                     _chatHubClient.SetMessageCallback(message => AddMessageToChat(message));
 
                     // Try a manual connection status message to verify
-                    await chatConnection.InvokeAsync("GetConnectionId");
                     UpdateStatus("Chat hub connection initialized and ready");
                 }
                 else
@@ -321,6 +320,13 @@ namespace ToxiqChatTester
                 return;
             }
 
+            // Find the sender's name
+            string senderName = message.SenderID == Guid.Empty ? "System" :
+                _conversations
+                    .SelectMany(c => c.Users)
+                    .FirstOrDefault(u => u.UserId == message.SenderID)?.Name ??
+                message.SenderID.ToString();
+
             string formattedMessage;
 
             if (message.SenderID == Guid.Empty)
@@ -329,7 +335,7 @@ namespace ToxiqChatTester
             }
             else
             {
-                formattedMessage = $"[{message.Date}] {message.SenderID}: {message.Content}\r\n";
+                formattedMessage = $"[{message.Date}] {senderName}: {message.Content}\r\n";
             }
 
             txtChat.AppendText(formattedMessage);

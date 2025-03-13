@@ -68,21 +68,16 @@ namespace ToxiqChatTester
         public async Task<HubConnection> CreateHubConnection(string hubUrl)
         {
             var connection = new HubConnectionBuilder()
-                .WithUrl($"{_baseUrl}/{hubUrl}", options =>
-                {
-                    // Try multiple authentication approaches
-                    options.AccessTokenProvider = () => Task.FromResult(_jwtToken);
-                    options.Headers.Add("Authorization", $"Bearer {_jwtToken}");
+       .WithUrl($"{_baseUrl}/hubs/chat", options =>
+       {
+           // Just the token without "Bearer" prefix
+           options.AccessTokenProvider = () => Task.FromResult(_jwtToken);
 
-                    // Add the user ID as a query parameter if available
-                    string userId = GetUserIdFromToken();
-                    if (!string.IsNullOrEmpty(userId))
-                    {
-                        options.Headers.Add("X-UserId", userId);
-                    }
-                })
-                .WithAutomaticReconnect(new[] { TimeSpan.Zero, TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(10) })
-                .Build();
+           // Keep the Authorization header with Bearer prefix for the initial HTTP request
+           options.Headers.Add("Authorization", $"Bearer {_jwtToken}");
+       })
+       .WithAutomaticReconnect()
+       .Build();
 
             return connection;
         }
