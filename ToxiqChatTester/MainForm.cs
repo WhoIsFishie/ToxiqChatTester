@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.SignalR.Client;
 using Newtonsoft.Json;
+using System.IdentityModel.Tokens.Jwt;
 using System.Net.Http.Headers;
 using System.Text;
 
@@ -112,9 +113,14 @@ namespace ToxiqChatTester
                     _jwtToken = loginForm.JwtToken;
                     _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _jwtToken);
 
+                    // Print token claims for debugging
+                    DumpTokenClaims();
+
                     // Initialize authentication helper
                     _authHelper = new AuthenticationHelper(_baseUrl, _jwtToken);
                     _userId = _authHelper.GetUserIdFromToken();
+
+                    UpdateStatus($"Extracted user ID from token: {_userId}");
 
                     if (string.IsNullOrEmpty(_userId))
                     {
@@ -408,6 +414,29 @@ namespace ToxiqChatTester
             {
                 UpdateStatus($"Error sending message: {ex.Message}");
                 MessageBox.Show($"Error sending message: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private void DumpTokenClaims()
+        {
+            try
+            {
+                var handler = new JwtSecurityTokenHandler();
+                var jsonToken = handler.ReadToken(_jwtToken) as JwtSecurityToken;
+
+                if (jsonToken != null)
+                {
+                    var claims = jsonToken.Claims.ToList();
+                    UpdateStatus($"Token contains {claims.Count} claims:");
+                    foreach (var claim in claims)
+                    {
+                        UpdateStatus($"  {claim.Type}: {claim.Value}");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                UpdateStatus($"Error parsing token: {ex.Message}");
             }
         }
 

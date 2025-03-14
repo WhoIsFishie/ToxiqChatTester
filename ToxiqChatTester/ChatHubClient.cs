@@ -144,13 +144,43 @@ namespace ToxiqChatTester
         {
             try
             {
-                // Attempt to invoke the SendMessage method on the hub
-                await _hubConnection.InvokeAsync("SendMessage", conversationId, message);
+                if (string.IsNullOrEmpty(_userId))
+                {
+                    _statusCallback?.Invoke("Cannot send message: User ID is missing");
+                    return false;
+                }
+
+                // Parse _userId as a Guid - this must exactly match what's in the token
+                if (!Guid.TryParse(_userId, out Guid senderGuid))
+                {
+                    _statusCallback?.Invoke("Cannot send message: Invalid User ID format");
+                    return false;
+                }
+
+                // Create a proper Message object with the correct SenderID
+                var messageObj = new Message
+                {
+                    SenderID = senderGuid,         // Must match the authenticated user ID
+                    RecipientID = conversationId,  // The conversation ID
+                    Content = message,             // The message content
+                    Type = MessageType.Text,       // Specify type as text
+                                                   // Let the server set the date - don't include it
+                };
+
+                _statusCallback?.Invoke($"Sending message as user {senderGuid}");
+
+                // Send the complete Message object
+                await _hubConnection.InvokeAsync("SendMessage", messageObj);
+                _statusCallback?.Invoke("Message sent via SignalR successfully");
                 return true;
             }
             catch (Exception ex)
             {
-                _statusCallback?.Invoke($"Error sending message: {ex.Message}");
+                _statusCallback?.Invoke($"SignalR error: {ex.GetType().Name}: {ex.Message}");
+                if (ex.InnerException != null)
+                {
+                    _statusCallback?.Invoke($"Inner exception: {ex.InnerException.Message}");
+                }
                 return false;
             }
         }

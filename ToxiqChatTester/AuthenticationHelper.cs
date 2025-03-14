@@ -36,9 +36,15 @@ namespace ToxiqChatTester
                     return null;
                 }
 
-                // Look for nameid or nameidentifier claim which typically contains the user ID
-                var userIdClaim = jsonToken.Claims.FirstOrDefault(c =>
-                    c.Type == "nameid" ||
+                // Look specifically for "nameid" first as that's what the server expects
+                var userIdClaim = jsonToken.Claims.FirstOrDefault(c => c.Type == "id");
+                if (userIdClaim != null)
+                {
+                    return userIdClaim.Value;
+                }
+
+                // Fall back to other common claim types
+                userIdClaim = jsonToken.Claims.FirstOrDefault(c =>
                     c.Type == "nameidentifier" ||
                     c.Type == "sub" ||
                     c.Type == "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier");
@@ -65,19 +71,18 @@ namespace ToxiqChatTester
             }
         }
 
+        // In AuthenticationHelper.cs
         public async Task<HubConnection> CreateHubConnection(string hubUrl)
         {
+            // Make sure you use the full URL including the hub path
             var connection = new HubConnectionBuilder()
-       .WithUrl($"{_baseUrl}/hubs/chat", options =>
-       {
-           // Just the token without "Bearer" prefix
-           options.AccessTokenProvider = () => Task.FromResult(_jwtToken);
-
-           // Keep the Authorization header with Bearer prefix for the initial HTTP request
-           options.Headers.Add("Authorization", $"Bearer {_jwtToken}");
-       })
-       .WithAutomaticReconnect()
-       .Build();
+                .WithUrl($"{_baseUrl}/{hubUrl}", options =>
+                {
+                    options.AccessTokenProvider = () => Task.FromResult(_jwtToken);
+                    options.Headers.Add("Authorization", $"Bearer {_jwtToken}");
+                })
+                .WithAutomaticReconnect()
+                .Build();
 
             return connection;
         }
